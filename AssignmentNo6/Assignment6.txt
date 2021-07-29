@@ -1,0 +1,187 @@
+Name:-Neha Anil Shimpi
+Student Id:-1001827779
+
+Steps to follow:-
+1. Open three tabs of category teacher,student and administrator.
+2. As soon as the tab opens timer starts.
+
+HTML:-index.html
+  <body>
+    <div>
+      <header>
+          <p>Student ID: 1001827779</p>
+          <p>Neha Anil Shimpi</p><br/>
+      </header>
+  </div><br/><hr>
+    <div class="home">
+        <form action="/chatroom" method="post">
+     
+             <p>Please Select the category: </p>
+     
+             <input type="radio" id="teacher" name="category" value="professor">Teacher<br>
+             <br/>
+             <input type="radio" id="student" name="category" value="student">Student<br>
+             <br/>
+             <input type="radio" id="adminst" name="category" value="adminst">Admin<br><br>
+     
+              Name: <input type="Name" id="iname" name="iname" placeholder="Enter your Name" required><br/><br/>
+              Room No: <input type="room" id="iroom" name="iroom" placeholder="Enter Room number" required><br/><br/>
+              <input type="submit" value="Submit"><br/><br/>
+
+       </form>
+     </div><br/>
+  </body>
+  
+PYTHON:-app.py
+@app.route("/")
+def nameAndId():
+  return render_template('index.html')
+
+@app.route("/chatroom", methods=['GET','POST'])
+def chatroom():
+
+  if request.method == 'POST' :
+    session.pop('user',None)
+    username = request.form['iname']
+    session['user']=username
+    room = request.form['iroom']
+    getcategory = request.form['category']
+    
+    return render_template('chatroom.html', username=username, room=room, category=getcategory)
+
+@app.before_request
+def before_request():
+    g.user = None
+    if 'user' in session:
+       g.user = session['user']
+
+
+@socketio.on('join', namespace='/chatroom')
+def join(message):
+    room = message['room']
+    join_room(room)
+    emit('status', {'msg':  message['username'] + ' has entered the room.'}, room=room)
+
+
+@socketio.on('text', namespace='/chatroom')
+def text(message):
+    room = message['room']
+    emit('message', {'msg': message['username'] + ' : ' + message['msg']}, room=room)
+
+#-------------Code for average score and score display---------------
+@socketio.on('score', namespace='/chatroom')
+def score(message):
+    room = message['room']
+    score = message['msg1']
+    list.append(int(score))
+    avg = sum(list)/len(list)
+
+    emit('message',{'msg': message['msg'],'average':avg}, room=room)
+
+@app.route("/logout")
+def logout():
+    session.pop('user',None)
+    session.pop('room',None)
+    return render_template('index.html')
+       
+
+@app.route("/endgame")
+def endgame():
+    session.pop('user',None)
+    return render_template('index.html')
+	
+	
+HTML:- chatroom.html
+
+<html>
+<script type="text/javascript" src="//code.jquery.com/jquery-1.4.2.min.js"></script>
+<script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/socket.io/1.3.6/socket.io.min.js"></script>
+<script type="text/javascript" charset="utf-8">
+    var socket;
+    var cat;
+    var suffix;
+    var scorenow;
+    
+    //--------Code for countdown timer--------------------------
+    var timeleft = 0;
+    var downloadTimer = setInterval(function(){
+    timeleft++;
+    document.getElementById("countdowntimer").textContent = timeleft;
+    if(timeleft == 180){
+        alert("i m here");
+        $("#ibutton").click();
+    }   
+    },1000);
+    //-------------------------------------------------------------
+    $(document).ready(function(){
+        
+        socket = io.connect('http://' + document.domain + ':' + location.port + '/chatroom');
+
+        socket.on('connect', function() {
+            socket.emit('join', {username: "{{username}}",  room:"{{room}}" });
+        });
+
+
+        socket.on('status', function(data) {
+            document.getElementById("chat").innerHTML = document.getElementById("chat").innerHTML+ data.msg +"<br/>";
+        });
+
+        socket.on('message', function(data) {
+               
+               cat = "{{category}}";
+               suffix = data.msg.split("_")[1];
+               data.msg=data.msg.split("_")[0];
+               alert(cat);
+               document.getElementById("chat").innerHTML = document.getElementById("chat").innerHTML+data.msg+"<br/>";
+               if(data.average!=null){
+                document.getElementById("chat").innerHTML = document.getElementById("chat").innerHTML+'Average:- '+data.average+"<br/>";
+               }
+        });
+
+        $('#send').click(function(e) {
+               
+                text = $('#text').val();
+                $('#text').val('');
+              //  cat = "{{category}}";
+                if( cat == "professor")
+                {text = text+"_question"; }
+                else if(cat == "student")
+                {text = text+"_answer";  }
+             socket.emit('text', {  msg:text, username:"{{username}}",  room:"{{room}}" });         
+        });
+        
+        //-------------------Code for counting score and average score-------------------------
+        $('#sendscore').click(function(e) {           
+               score = $('#iscore').val();
+               $('#iscore').val('');
+               score1 = "Score for this question is: "+score+"_question";
+            socket.emit('score', {msg:score1,msg1:score,room:"{{room}}"});         
+       });
+
+    }); 
+</script>
+
+<body>
+<div>
+    <header>
+        <p>Student ID: 1001827779</p>
+        <p>Neha Anil Shimpi</p><br/>
+    </header>
+</div><br/><hr>
+
+<div class="home">
+   <form action="/chatroom" method="get">
+
+        <h2>Welcome {{category}} {{username}} !! </h2>
+        <h2>Room : {{room}}</h2><br>
+        <p> Time Elapsed:- <span id="countdowntimer">0</span> /180 Seconds!!</p>
+        <div id="chat" style="border-style:groove; background-color: whitesmoke; width:500px; height:200px; margin: auto;text-align:left;"></div><br />
+        <input type="text" id="text" name="iquestion" placeholder="Enter your question/answer">  <button type="button" id="send">SEND</button><br/><br/>
+        Score(For Teachers Use Only): <input type="Score" id="iscore" name="iscore" placeholder="Enter Students score"> <button type="button" id="sendscore">SEND</button><br/><br/>
+    <a href="/logout"><button type="button" id="ibutton">Logout</button></a>
+    <a href="/endgame"><button type="button">EndGame</button></a>
+
+  </form>
+</div><br/>
+</body>
+</html>

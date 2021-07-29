@@ -1,0 +1,336 @@
+Name: Neha Anil Shimpi
+StudentID: 1001827779
+
+from flask import Flask,render_template,request
+from time import time
+import pymongo
+import pyodbc,dns
+import urllib.parse
+import redis
+import hashlib
+import pickle
+app = Flask(__name__)
+
+conn = pyodbc.connect(driver='{ODBC Driver 17 for SQL Server}', host='sampleserver0001.database.windows.net', database='sample',
+                      trusted_connection='no', user='sample_admin', password='Austin@123')
+
+cursor = conn.cursor()
+@app.route("/")
+def start():
+  return render_template('index.html')
+
+fig = plot.figure(1, figsize=(12, 5))
+
+
+#1) Just a demo of bar graph
+
+HTML:- index.html
+<div>
+  <form action="/demo1" method="get">
+   1) Chart showing different magnitudes vs number of earthquakes
+   <input type="submit" value="show"><br/><br/>
+ </form>
+ </div><br/>
+ 
+
+HTNL:-a.html
+<div>
+    <img src="data:image/png;base64,{{setimage}}"/>
+</div>
+ 
+PYTHON:- app.py
+@app.route("/demo1" , methods=['GET','POST'])
+def firstquery():
+  getmag = str(request.args.get('fmagnitude'))
+  
+  cursor.execute("select count(*) from all_month where mag < 1;")
+  rows01 = cursor.fetchall()
+  cursor.execute("select count(*) from all_month where mag > 1 and mag <= 2;")
+  rows12 = cursor.fetchall()
+  cursor.execute("select count(*) from all_month where mag > 2 and mag <= 3;")
+  rows23 = cursor.fetchall()
+  cursor.execute("select count(*) from all_month where mag > 3 and mag <= 5;")
+  rows35 = cursor.fetchall()
+
+  ax = fig.add_subplot(111)
+  Num_of_Earthquakes = [rows01[0][0],rows12[0][0],rows23[0][0],rows35[0][0]]
+  magnitudes1 = ['<1','1-2','2-3','3-5']
+  magnitudes = [1,2,3,4]
+  width = 0.45
+  variable = ax.bar(magnitudes, Num_of_Earthquakes, color='pink', linewidth=1.5, width=width, label ='magnitude vs numofearthquakes')
+  autolabel(variable,ax)
+  plot.xlabel('Magnitudes')
+  plot.ylabel('Number of earthquakes')
+  plot.title('Number of earthquakes with different magnitudes')
+  plot.legend()
+  plot.xticks(ticks=magnitudes, labels=magnitudes1)
+  img = io.BytesIO()
+  plot.savefig(img, format='png')
+  img.seek(0)
+  plot_url= base64.b64encode(img.getvalue()).decode()
+  plot.clf()
+  ax.cla()
+  return render_template('a.html', setimage=plot_url)
+	
+def autolabel(rects,ax):
+    """Attach a text label above each bar in *rects*, displaying its height."""
+    for rect in rects:
+        height = rect.get_height()
+        ax.annotate('{}'.format(height),
+                    xy=(rect.get_x() + rect.get_width() / 2, height),
+                    xytext=(0, 3),  # 3 points vertical offset
+                    textcoords="offset points",
+                    ha='center', va='bottom')
+
+
+
+
+
+2.A random query execution for scatter plot
+HTML:-index.html
+<div>
+  <form action="/demoscatter" method="get">
+    2) Plot vs Depth
+   <input type="submit" value="VIEW"><br/><br/>
+ </form>
+ </div><br/>
+
+HTML:-a.html
+<div>
+    <img src="data:image/png;base64,{{setimage}}"/>
+</div>
+
+
+PYTHON:-app.py
+@app.route("/demoscatter" , methods=['GET','POST'])
+def scatterdisplay():
+    cursor.execute("SELECT top 100 mag FROM all_month;")
+    rows1 = cursor.fetchall()
+    cursor.execute("SELECT top 100 depth FROM all_month;")
+    rows2 = cursor.fetchall()
+    ax = fig.add_subplot(111)
+    ax.scatter(rows1,rows2, s=30, c=rows1, cmap='nipy_spectral')
+    plot.xlabel('Magnitudes')
+    plot.ylabel('depth values')
+    plot.title('magnitude vs depth chart')
+    plot.axis([0,6,-10,100])
+    img = io.BytesIO()
+    plot.savefig(img, format='png')
+    img.seek(0)
+    plot_url= base64.b64encode(img.getvalue()).decode()
+    plot.clf()
+    ax.cla()
+    return render_template('a.html', setimage=plot_url)
+
+
+
+3. Number of earthquakes greater than the magnitude are:-
+
+HTML:-index.html
+ <div>
+  <form action="/firstquery" method="get">
+    3) Magnitude> <input type="text" name="fmagnitude"/>
+   <input type="submit" value="Submit"><br/><br/>
+ </form>
+ </div><br/>
+
+HTML:-a.html
+<div>
+    <img src="data:image/png;base64,{{setimage}}"/>
+</div>
+
+
+PYTHON:-app.py
+@app.route("/firstquery" , methods=['GET','POST'])
+def greaterMag():
+  getmag = str(request.args.get('fmagnitude'))
+  cursor.execute("select count(*) as Num_of_Earthquakes from all_month;")
+  countall = cursor.fetchall()[0][0]
+  cursor.execute("select count(*) as Num_of_Earthquakes from all_month where mag > "+getmag+";")
+  countgmag = cursor.fetchall()[0][0]
+  ax = fig.add_subplot(111)
+  slices=[countall-countgmag,countgmag]
+  labels=[str(countall-countgmag)+': magnitude < '+getmag, str(countgmag)+': magnitude > '+getmag]
+  colors=['blue','orange' ]
+  explode=[0,0.1]
+  ax.pie(slices, labels=labels, explode=explode, wedgeprops={'edgecolor':'black'}, autopct='%1.1f%%')
+  plot.title('Earthquakes with magnitudes > '+getmag)
+  img = io.BytesIO()
+  plot.savefig(img, format='png')
+  img.seek(0)
+  plot_url= base64.b64encode(img.getvalue()).decode()
+  plot.clf()
+  ax.cla()
+  return render_template('a.html', ecount=countgmag, setimage=plot_url)
+
+
+4. #display earthquakes in a given range of magnitudes and dates
+HTML:- index.html
+
+ <div>
+  <form action="/secondquery" method="get">
+    4) <br/>
+    Magnitude_Lowerlimit: <input type="text" name="fmagnRange1"/>
+     Magnitude_Upperlimit: <input type="text" name="fmagnRange2"/>
+     From Date: <input type="date"  name="fdateRange1"> 
+     To Date:   <input type="date" name="fdateRange2">
+   <input type="submit" value="Submit"><br/><br/>
+ </form>
+ </div><br/>
+
+HTML:-a.html
+<div>
+    <img src="data:image/png;base64,{{setimage}}"/>
+</div>
+
+
+PYTHON:-
+@app.route("/secondquery" , methods=['GET','POST'])
+def rangeMag():
+  getmagRange1 = str(request.args.get('fmagnRange1'))
+  getmagRange2 = str(request.args.get('fmagnRange2'))
+  getdateRange1 = str(request.args.get('fdateRange1'))
+  getdateRange2 = str(request.args.get('fdateRange2'))
+  cursor.execute("select count(*) from all_month where mag >= "+getmagRange1+" and mag <= "+getmagRange2+" AND time between '"+getdateRange1+"' and '"+getdateRange2+"';")
+  rangeRowscount = cursor.fetchall()
+  ax = fig.add_subplot(111)
+  Num_of_Earthquakes = [rangeRowscount[0][0]]
+  magnitudelabels = [str(getmagRange1)+'-'+str(getmagRange2)]
+  magnitudes = [1]
+  width = 0.2
+  variable = ax.bar(magnitudes, Num_of_Earthquakes, color='#5a7d9a', linewidth=1.5, width=width, label ='magnitude vs numofrecords')
+  autolabel(variable,ax)
+  plot.xlabel('Magnitude Range')
+  plot.ylabel('number of earthquakes')
+  plot.title('Number of earthquakes for the given magnitude range')
+  plot.legend()
+  plot.xticks(ticks=magnitudes, labels=magnitudelabels)
+  img = io.BytesIO()
+  plot.savefig(img, format='png')
+  img.seek(0)
+  plot_url= base64.b64encode(img.getvalue()).decode()
+  plot.clf()
+  ax.cla()
+  return render_template('rangedisplay.html', setimage=plot_url)
+
+5.#display earthquakes in a given range in KM
+
+HTML:-index.html
+
+ <div>
+  <form action="/thirdquery" method="get">
+    5)<br/>
+     Enter Latitude: <input type="text" name="flatitude"/>
+     Enter Longitude: <input type="text" name="flongitude"/>
+     Surrounding Range in KM : <input type="text" name="fkmrange"/>
+   <input type="submit" value="Submit"><br/><br/>
+ </form></div><br/>
+
+HTML:-a.html
+<div>
+    <img src="data:image/png;base64,{{setimage}}"/>
+</div>
+
+PYTHON:-
+@app.route("/thirdquery" , methods=['GET','POST'])
+def location():
+  getlongitude = str(request.args.get('flongitude'))
+  getlatitude = str(request.args.get('flatitude'))
+  getkmrange = str(request.args.get('fkmrange'))
+  leftlat = float(getlatitude)-float(getkmrange)/111   #converting km to degree
+  rightlat = float(getlatitude)+float(getkmrange)/111
+  uplong =   float(getlongitude)+float(getkmrange)/111
+  downlong = float(getlongitude)-float(getkmrange)/111
+  cursor.execute("select time, latitude, longitude, mag,id, place from all_month where (latitude>= "+str(leftlat)+" and latitude<= "+str(rightlat)+" ) AND ( longitude>= "+str(downlong)+" and longitude<= "+str(uplong)+");")
+  locationRows = cursor.fetchall()
+  magnitude=[]
+  for i in locationRows:
+    magnitude.append(i[3])
+  magnitude.sort()
+  lower= math.floor(magnitude[0])
+  upper= math.ceil(magnitude[-1])
+  print(math.floor(magnitude[0]))
+  print(math.ceil(magnitude[-1]))
+
+  print(list(range(lower+1, upper+1) ) )
+  magnitude_counts_map = count_intervals(magnitude, list(range(lower+1, upper+1)))
+  print (magnitude_counts_map)
+
+  ax = fig.add_subplot(111)
+  Num_of_Earthquakes=[]
+  magnitudes=[]
+  for i,j in magnitude_counts_map.items():
+    Num_of_Earthquakes.append(j)
+    magnitudes.append(i)
+  #Num_of_Earthquakes = list(magnitude_counts_map.values())
+  print(Num_of_Earthquakes)
+  #magnitudelabels = [0,1,2,3,4,5]
+  #magnitudes = list(magnitude_counts_map.keys())
+  width = 0.2
+  variable = ax.bar(magnitudes, Num_of_Earthquakes, color='#5a7d9a', linewidth=1.5, width=width, label ='magnitude vs numofrecords')
+  autolabel(variable,ax)
+  plot.xlabel('Magnitude Range')
+  plot.ylabel('number of earthquakes')
+  plot.title('Number of earthquakes for the given distance')
+  plot.legend()
+  #plot.xticks(ticks=magnitudes, labels=magnitudelabels)
+  img = io.BytesIO()
+  plot.savefig(img, format='png')
+  img.seek(0)
+  plot_url= base64.b64encode(img.getvalue()).decode()
+  plot.clf()
+  ax.cla()
+  return render_template('locationDisplay.html', setimage = plot_url)
+
+
+def count_intervals(sequence, intervals):
+ count = defaultdict(int)
+ intervals.sort()
+ for item in sequence:
+   pos = bisect_left(intervals, item)
+   if pos == len(intervals):
+    count[None] += 1
+   else:
+     count[intervals[pos]] += 1
+ return count
+
+
+5.  #display earthquakes at night time
+
+HTML:-index.html
+ <form action="/fourthquery" method="get">
+    6) Large Magnitude: <input type="text" name="flargemag"><p></p>
+   <input type="submit" value="Submit"><br/><br/>
+ </form>
+ </div><br/>
+ 
+ 
+HTML:-a.html
+<div>
+    <img src="data:image/png;base64,{{setimage}}"/>
+</div>
+
+PYTHON:-
+@app.route("/fourthquery" , methods=['GET','POST'])
+def nightdisplay():
+  getlargemag = str(request.args.get('flargemag'))
+  cursor.execute("select count(*) from all_month;")
+  nightRowsall = cursor.fetchall()[0][0]
+  cursor.execute("select count(*) from all_month where mag> "+getlargemag+" and  (DATEADD(day, -DATEDIFF(day, 0, time), time) > '00:10:10.000' and DATEADD(day, -DATEDIFF(day, 0, time), time) < '05:00:00.000');")
+  nightcount = cursor.fetchall()[0][0]
+  ax = fig.add_subplot(111)
+  slices=[nightRowsall-nightcount,nightcount]
+  labels=[str(nightRowsall-nightcount)+': magnitude < '+getlargemag, str(nightcount)+': magnitude > '+getlargemag]
+  colors=['steelblue','orange' ]
+  explode=[0,0.1]
+  ax.pie(slices, labels=labels, explode=explode, wedgeprops={'edgecolor':'black'}, autopct='%1.1f%%')
+  plot.title('Earthquakes with magnitudes > '+getlargemag +' ; that occure in the night')
+  img = io.BytesIO()
+  plot.savefig(img, format='png')
+  img.seek(0)
+  plot_url= base64.b64encode(img.getvalue()).decode()
+  plot.clf()
+  ax.cla()
+  return render_template('nightDisplay.html', setnightcount=nightcount,setimage=plot_url)
+ 
+ 

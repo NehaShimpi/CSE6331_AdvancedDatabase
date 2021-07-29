@@ -1,0 +1,143 @@
+Name: Neha Anil Shimpi
+StudentID: 1001827779
+
+import os
+from flask import Flask,render_template,request
+import os.path
+import re
+import string
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+
+
+#######1.Cleaning the files:-
+1. Removed Punctuation,stopwords and converted to lowercase
+
+HTML:-
+<div>
+    <form action="/clean" method="get">
+      Preprocess the files:-
+      <input type="submit" value="Clean"><br/><br/>
+   </form>
+</div><br/>
+
+
+PYTHON:-Used python nltk
+
+stop_words = set(stopwords.words('english'))
+
+@app.route("/")
+def firstpage():
+    return render_template("index.html")
+
+@app.route("/clean")
+def clean():
+# Read text File  
+ for file in os.listdir():
+    if file.endswith(".txt"):
+        file_path = f"{file}"
+    filepathout=file.split(".")[0]+"_pre.txt"
+    appendFile = open(filepathout,"w",encoding="utf8")
+
+    with open(file_path, encoding="utf8") as f:
+        for line in f:
+            line = line.lower().translate(str.maketrans('','',string.punctuation)).replace('"','') #make lower case
+            line = re.sub(r'\d+', '', line)
+            words = word_tokenize(line)
+            for r in words:
+                if r not in stop_words:
+                    appendFile.write(" "+r)
+                    #appendFile.close()
+            appendFile.write("\n")
+    
+    appendFile.close()
+ return render_template('index.html')
+ 
+
+ 
+ 
+#####2. Search for a word and display file,line,word(highlighted) and line number:-
+
+HTML:-index.html
+<div>
+  <h3> (Query1) </h3>
+<div>
+  <form action="/firstquery" method="get">
+    Enter the word you want to search: <input type="text" name="esearch"/>
+    <input type="submit" value="Submit"><br/><br/>
+ </form>
+ </div><br/>
+ </div>
+
+HTML:-a.html
+<table>
+{%for row in setsearch %}
+<th></th>
+<tr>
+  <td>
+    <a class="booklink" href="/displaybook?linenum={{row[0]}}&filename={{row[2]}}&eline={{row[4]}}&_anchor='{{row[0]}}'">File: {{row[2]}}<br/></a>
+     <p>
+        Line Number {{row[0]}} : 
+        {%for word in row[1] %}
+        {% if  row[3] in word|lower %}<mark>{{word}}</mark>{% else %} {{word}}
+        {% endif %}
+        {% endfor %}
+     </p>
+  </td> 
+</tr>
+{% endfor %}
+</table>
+
+ 
+ 
+PYTHON:-app.py
+@app.route("/firstquery")
+def gh():
+    getword = str(request.args.get('esearch'))
+    getwords = getword.lower()
+    output = []
+    count=1
+    for file in os.listdir():
+      if file.endswith("_pre.txt"):
+         # print(file)
+          file_path = f"{file}"
+          with open(file_path, encoding="utf8") as f:
+           
+           for line in f:
+              count+=1
+              if getwords in line:
+                  output.append([count,line.split(),file.split("_pre")[0]+".txt",getwords,line])
+                  print(output)
+              
+    return render_template('a.html',setsearch = output)
+	
+
+
+# to display the line in file selected:-
+
+HTML:- displaybook.html
+
+<div>           
+    {%for line in setbook%}
+      <span id="{{loop.index}}">
+       {% if  setline in line%}
+         <mark>{{loop.index}} : {{line}}</mark><br/>
+       {% else %}
+         {{loop.index}} : {{line}} <br/>
+       {% endif %}
+      </span>
+    {% endfor %}
+</div>
+  
+PYTHON:-
+@app.route("/displaybook")
+def displaybook():
+   
+    getf = str(request.args.get('filename'))
+    getl = str(request.args.get('linenum'))
+    getline = str(request.args.get('eline'))
+    filepath= f"{getf}"
+    fh=open(filepath,encoding="utf8")
+    alllines = list(fh)
+    fh.close()
+    return render_template('displaybook.html',setbook=alllines,setlinenum=getl,setline=getline)

@@ -1,0 +1,269 @@
+Name: Neha Anil Shimpi
+StudentID: 1001827779
+
+from flask import Flask,render_template,request
+from time import time
+import pymongo
+import pyodbc,dns
+import urllib.parse
+import redis
+import hashlib
+import pickle
+app = Flask(__name__)
+
+conn = pyodbc.connect(driver='{ODBC Driver 17 for SQL Server}', host='sampleserver0001.database.windows.net', database='sample',
+                      trusted_connection='no', user='sample_admin', password='Austin@123')
+
+cursor = conn.cursor()
+
+
+client  = pymongo.MongoClient("mongodb+srv://admin:"+urllib.parse.quote_plus("Austin@123")+"@cluster0.jrnrl.mongodb.net/sample")
+db = client.get_database("sample")
+col = db.get_collection("all_month")
+
+1.Create table
+
+HTML:- index.html
+<div>
+  <h3> (Create Table) </h3>
+<div>
+  <form action="/firstquery" method="get">
+     Click on the button to get time to create table: 
+   <input type="submit" value="Submit"><br/><br/>
+ </form>
+ </div><br/>
+ </div>
+ 
+HTNL:-createtable.html
+<h2>The time required is {{settime}}</h2>
+ 
+PYTHON:- app.py
+@app.route("/firstquery" , methods=['GET','POST'])
+def createtable():
+    starttime = time()
+    cursor.execute("CREATE TABLE earthqks(time VARCHAR(200),latitude DECIMAL(15),longitude DECIMAL(15), depth DECIMAL(20),mag DECIMAL(17),magType VARCHAR(10),nst SMALLINT,gap DECIMAL(20),dmin DECIMAL(15),rms DECIMAL(20),net VARCHAR(5),id VARCHAR(20),updated VARCHAR(200),place VARCHAR(100),type VARCHAR(20),horizontalError DECIMAL(20),depthError DECIMAL(20),magError DECIMAL(15) ,magNst SMALLINT,status VARCHAR(15),locationSource VARCHAR(15),magSource VARCHAR(22));")
+    endtime = time()
+    timediff = endtime - starttime
+    print(timediff)
+    return render_template('createtable.html', settime=timediff)
+	
+
+
+2.A random query execution
+HTML:-index.html
+<div>
+    <h3> Query 1(Repeat random query) </h3>
+  <div>
+    <form action="/secondquery" method="get">
+       Enter the number of times you want to execute the query: <input type="text" name="fnum"/>
+     <input type="submit" value="Submit"><br/><br/>
+   </form>
+   </div><br/>
+   </div>
+
+HTML:-
+Time calculated for executing random query several times.
+<h3>Time Before:- {{settimebefore}}</h3>
+<h3>Time After:- {{settimeafter}}</h3>
+<h3>Execution time:- {{settime}}</h3>
+
+PYTHON:-app.py
+@app.route("/secondquery" , methods=['GET','POST'])
+def randomquery():
+  getnum = str(request.args.get('fnum'))
+  starttime = time()
+  for x in range(int(getnum)):
+   cursor.execute("select time, latitude, longitude, mag,id, place from all_month where mag ="+getnum+";")
+ #rows = cursor.fetchall()
+  endtime = time()
+  timediff = endtime - starttime
+  return render_template('secondquery.html', settimebefore=starttime, settimeafter=endtime, settime=timediff)
+
+3. A restricted number of queries
+
+HTML:-index.html
+<div>
+    <h3> Query 2(Restricted set of queries where selection is Restricted) </h3>
+  <div>
+    <form action="/thirdquery" method="get">
+       Enter net: <input type="text" name="fnet"/>
+       Enter the number of times you want to execute the query: <input type="text" name="fnum"/>
+     <input type="submit" value="Submit"><br/><br/>
+   </form>
+   </div><br/>
+</div>
+
+HTML:-
+Time calculated for executing random query several times.
+<h3>Time Before:- {{settimebefore}}</h3>
+<h3>Time After:- {{settimeafter}}</h3>
+<h3>Execution time:- {{settime}}</h3>
+
+
+PYTHON:-app.py
+@app.route("/thirdquery" , methods=['GET','POST'])
+def restrictedquery():
+  getnet = str(request.args.get('fnet'))
+  getnum = str(request.args.get('fnum'))
+  starttime = time()
+  for x in range(int(getnum)):
+    cursor.execute("select time, latitude, longitude, mag,id, place from all_month where magSource='"+str(getnet)+"';")
+  endtime = time()
+  timediff = endtime - starttime
+  return render_template('secondquery.html', settimebefore=starttime, settimeafter=endtime, settime=timediff)
+
+3. Using redis, execute query1
+HTML:- index.html
+
+<div>
+  <h3> Query 1(Using Redis) </h3>
+ <div>
+    <form action="/improvedQueries" method="get">
+       Enter the number of Random queries you want to execute to see time diff using Redis : <input type="text" name="fimprandomcount">
+     <input type="submit" value="Submit"><br/><br/>
+   </form>
+   </div><br/>
+</div>
+
+HTML:-
+<div>
+    <h4>Total time taken for specified number of random queries to execute is :  {{setimprovedtime}}   </h4>
+</div><br/>
+
+PYTHON:-
+@app.route("/improvedQueries" , methods=['GET','POST'])
+def improvedQueries():
+  r = redis.StrictRedis(host='redistrail.redis.cache.windows.net',port=6380, db=0, password='Iu0huP0cihMK5VuPdkMUk0EzvyUxrWIM+xZKFHA5Zcc=', ssl=True)
+  result = r.ping()
+  print("Ping returned : " + str(result))
+  getRandom=str(request.args.get('fimprandomcount'))
+  igetmagLower = '3'
+  igetmagUpper = '4'
+  
+  query= "select time,mag,id, place from all_month where mag >= "+igetmagLower+" and mag <= "+igetmagUpper+";"
+  hash = hashlib.sha224(query.encode('utf-8')).hexdigest()
+  key = "redis_cache:" + hash
+  starttime=time()
+  for i in range(int(getRandom)):
+    if (r.get(key)):
+      print("redis cached")
+    else:
+      cursor.execute(query)
+      fetchimpres = list(cursor.fetchall())
+      r.set(key, pickle.dumps(list(fetchimpres)))
+      r.expire(key, 36)
+   # cursor.execute(query)
+  endtime = time()
+  executiontime = endtime - starttime
+  return render_template('redisfirstquery.html', setimprovedtime=executiontime)
+
+4. Using redis, execute query2
+
+HTML:-index.html
+<div>
+  <h3> Query 2(Using Redis) </h3>
+  <div>
+    <form action="/improvedQueries1" method="get">
+      Enter the number of Random queries you want to execute to see time diff using Redis  : <input type="text" name="fimprandomcount">
+     <input type="submit" value="Submit"><br/><br/>
+   </form>
+   </div><br/>
+</div>
+
+HTML:-
+<div>
+    <h4>Total time taken for specified number of random queries to execute is :  {{setimprovedtime}} s  </h4>
+</div><br/>
+
+
+PYTHON:-
+@app.route("/improvedQueries1" , methods=['GET','POST'])
+def improvedQueries1():
+  r = redis.StrictRedis(host='redistrail.redis.cache.windows.net',port=6380, db=0, password='Iu0huP0cihMK5VuPdkMUk0EzvyUxrWIM+xZKFHA5Zcc=', ssl=True)
+  result = r.ping()
+  print("Ping returned : " + str(result))
+  getRandom=str(request.args.get('fimprandomcount'))
+  
+  query= "select time,mag,id, place from all_month where mag = 5.8;"
+  hash = hashlib.sha224(query.encode('utf-8')).hexdigest()
+  key = "redis_cache:" + hash
+  starttime=time()
+  for i in range(int(getRandom)):
+    if (r.get(key)):
+      print("redis cached")
+    else:
+      print(key)
+      print(r)
+      cursor.execute(query)
+      fetchimpres = list(cursor.fetchall())
+      r.set(key, pickle.dumps(list(fetchimpres)))
+      r.expire(key, 36)
+
+    cursor.execute(query)
+  endtime = time()
+  executiontime = endtime - starttime
+  return render_template('redisfirstquery.html', setimprovedtime=executiontime)
+
+5. Using NoSQL execute query1:-
+
+HTML:-index.html
+<div>
+  <h3> NoSQL(MongoDb query 1)  </h3>
+<div>
+  <form action="/nosqlqueryone" method="get">
+    Show number of times query should be executed in nosql database: <input type="text" name="fcount"/>
+   <input type="submit" value="Submit"><br/><br/>
+ </form>
+ </div><br/>
+</div>
+
+HTML:-
+<h2>Execution time using nosql database is:-</h2> {{setdata}}
+<br>
+<h2>Data:-</h2> <br>{{setdetails}}
+
+PYTHON:-
+@app.route("/nosqlqueryone" , methods=['GET','POST'])
+def nosqlqueryone():
+ getnum = str(request.args.get('fcount'))
+ starttime = time()
+ for x in range(int(getnum)):
+  data_list = col.find({'mag': {'$gt': 5}})
+ endtime = time()
+ exectime = endtime-starttime 
+ list = []
+ for d in data_list:
+   list.append(d)
+ return render_template('nosqlfirstquery.html',setdata=exectime,setdetails = list)
+ 
+ 
+6. Using NoSQL execute query2:-
+HTML:-index.html
+<div>
+  <h3> NoSQL(MongoDb query 2)  </h3>
+<div>
+  <form action="/nosqlquerytwo" method="get">
+    Show number of times query should be executed in nosql database where magNst will be between 10 to 20: <input type="text" name="fcount"/>
+   <input type="submit" value="Submit"><br/><br/>
+ </form>
+ </div><br/>
+</div>
+
+HTML:-
+<h2>Execution time using nosql database is:-</h2> {{setdata}}
+<br>
+<h2>Data:-</h2> <br>{{setdetails}}
+
+PYTHON:-
+@app.route("/nosqlquerytwo" , methods=['GET','POST'])
+def nosqlquerytwo():
+ getnum = str(request.args.get('fcount'))
+ starttime = time()
+ for x in range(int(getnum)):
+  data_list = col.find({'magNst': {'$lt':20 ,'$gt': 10}})
+ endtime = time()
+ exectime = endtime-starttime 
+ list = []
+ for d in data_list:
+   list.append(d)
+ return render_template('nosqlfirstquery.html',setdata=exectime,setdetails = list)

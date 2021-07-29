@@ -1,0 +1,272 @@
+Name:-Neha Anil Shimpi
+Student ID:-1001827779
+
+from flask import Flask,render_template,request
+import pyodbc,os
+app = Flask(__name__)
+
+conn = pyodbc.connect(driver='{ODBC Driver 17 for SQL Server}', host='sampleserver0001.database.windows.net', database='sample',
+                      trusted_connection='no', user='sample_admin', password='Austin@123')
+
+cursor = conn.cursor()
+
+Query 1 answer:-
+
+HTML:index.html
+
+<div>
+  <h3> Query 1 </h3>
+ <div>
+   <form action="/firstquery" method="get">
+     Enter Magnitude: <input type="text" name="fmag"/>
+   <input type="submit" value="Submit"><br/><br/>
+   </form>
+ </div><br/>
+</div>
+
+HTML:firstquery.html
+
+{% block content %}
+Number of earthquakes greater than the magnitude are:-<br>
+{{setdetails[0][0]}}
+<br> and there details:
+<table>
+    <tr>
+      <th>Time</th>
+      <th>Latitude</th>
+      <th>Longitude</th>
+      <th>Magnitude</th>
+      <th>ID</th>
+      <th>Place</th>
+    </tr>
+    {% for row in frows %}
+    <tr>
+        {% for column in range(row|length) %}
+            <td>{{ row[column] }}</td>
+        {% endfor %}
+    </tr>
+{% endfor %}
+{% endblock %}
+
+PYTHON:app.py
+#display earthquakes greater than given magnitude
+@app.route("/firstquery" , methods=['GET','POST'])
+def displaymag():
+  getmag = str(request.args.get('fmag'))
+  cursor.execute("select time, latitude, longitude, mag,id, place from all_month where mag >"+getmag+";")
+  rows = cursor.fetchall()
+  cursor.execute("select count(*) as Num_of_Earthquakes from all_month where mag > "+getmag+";")
+  count = cursor.fetchall()
+  return render_template('firstquery.html', setdetails=count, frows=rows)
+  
+Query 2 answer:-
+  
+HTML:index.html
+<div>
+  <h3> Query 2 </h3>
+ <div>
+  <form action="/secondquery" method="get">
+     Magnitude_Lowerlimit: <input type="text" name="frange1"/>
+     Magnitude_Upperlimit: <input type="text" name="frange2"/>
+     From Date: <input type="date"  name="fdrange1"> 
+     To Date:   <input type="date" name="fdrange2">
+   <input type="submit" value="Submit"><br/><br/>
+ </form>
+ </div><br/>
+</div>
+
+HTML:secondquery.html
+{% block content %}
+<table>
+    <tr>
+      <th>Time</th>
+      <th>Latitude</th>
+      <th>Longitude</th>
+      <th>Magnitude</th>
+      <th>ID</th>
+      <th>Place</th>
+    </tr>
+    {% for row in frows %}
+    <tr>
+        {% for column in range(row|length) %}
+            <td>{{ row[column] }}</td>
+        {% endfor %}
+    </tr>
+{% endfor %}
+{% endblock %}
+
+PYTHON:app.py
+#display earthquakes for given time period
+@app.route("/secondquery" , methods=['GET','POST'])
+def rangeMag():
+  getmagrange1 = str(request.args.get('frange1'))
+  getmagrange2 = str(request.args.get('frange2'))
+  getdaterange1 = str(request.args.get('fdrange1'))
+  getdaterange2 = str(request.args.get('fdrange2'))
+  cursor.execute("select time, latitude, longitude, mag,id, place from all_month where mag >= "+getmagrange1+" and mag <= "+getmagrange2+" AND time between '"+getdaterange1+"' and '"+getdaterange2+"';")
+  rows = cursor.fetchall()
+  return render_template('secondquery.html', frows=rows)
+  
+  
+Query 3 answer:-
+
+HTML:index.html
+<div>
+<h3> Query 3 </h3>
+  <div>
+    <p>
+      <form action="/range" method="get">
+         Latitude: <input type="text" name="flatitude"/>
+         Longitude: <input type="text" name="flongitude"/>
+         RangeinKM: <input type="text" name="frangeinkm"/>
+       <input type="submit" value="Submit"><br/><br/>
+     </form>
+     </p>
+  </div>
+</div>
+
+
+
+HTML:displaylocation.html
+
+{% block content %}
+<h2 align="left"><p>Student ID: 1001827779</p></h2><br/>
+<h2 align="left"><p>Neha Anil Shimpi</p></h2><br/>
+<div>
+      <h4>Earth quakes with in specified surroundings of the specified location are:  </h4>
+      <table>
+          <tr>
+            <th>Time</th>
+            <th>Latitude</th>
+            <th>Longitude</th>
+            <th>Magnitude</th>
+            <th>ID</th>
+            <th>Place</th>
+          </tr>
+          {% for row in setdetails %}
+              <tr>
+                  {% for column in range(row|length) %}
+                      <td>{{ row[column] }}</td>
+                  {% endfor %}
+              </tr>
+          {% endfor %}
+      </table>
+  </div><br/>
+  {% endblock %}
+
+PYTHON:app.py
+
+@app.route("/range" , methods=['GET','POST'])
+def display():
+  getlongitude = str(request.args.get('flongitude'))
+  getlatitude = str(request.args.get('flatitude'))
+  getkmrange = str(request.args.get('frangeinkm'))
+
+  leftlat = float(getlatitude)-float(getkmrange)/111   #converting km to degree
+  rightlat = float(getlatitude)+float(getkmrange)/111
+  uplon =   float(getlongitude)+float(getkmrange)/111
+  downlon = float(getlongitude)-float(getkmrange)/111
+
+  cursor.execute("select time, latitude, longitude, mag,id,place from all_month where (latitude>= "+str(leftlat)+" and latitude<= "+str(rightlat)+" ) AND ( longitude>= "+str(downlon)+" and longitude<= "+str(uplon)+");")
+  getearthquakes = cursor.fetchall()
+  return render_template('displaylocation.html', setdetails = getearthquakes)
+
+
+
+Query 4 answer:-
+
+HTML:index.html
+<div>
+<h3> Query 4 </h3>
+<div>
+  <p>
+  <form action="/showclusters" method="get">
+    Show earthquake cluster of magnitude: <input type="text" name="quakemag" id="codew31ee25e" />
+  <input type="submit" value="Submit"><br/><br/>
+  </form></p>
+</div><br/><hr>
+</div>
+
+HTML:showcluster.html
+{% block content %}
+Number of earthquakes in this cluster<br>
+{{setdetails[0][0]}}
+<br> and there details:
+<table>
+    <tr>
+      <th>Time</th>
+      <th>Latitude</th>
+      <th>Longitude</th>
+      <th>Magnitude</th>
+      <th>ID</th>
+      <th>Place</th>
+    </tr>
+    {% for row in frows %}
+    <tr>
+        {% for column in range(row|length) %}
+            <td>{{ row[column] }}</td>
+        {% endfor %}
+    </tr>
+{% endfor %}
+{% endblock %}
+
+
+PYTHON:app.py
+#display earthquake clusters
+@app.route("/showclusters" , methods=['GET','POST'])
+def displayclusters():
+    getmag = request.args.get("quakemag")
+    cursor.execute("select count(*) from all_month where mag = "+getmag+";")
+    getdetails = cursor.fetchall()
+    cursor.execute("select time, latitude, longitude, mag,id, place from all_month where mag = "+getmag+";")
+    clusterrows = cursor.fetchall()
+    return render_template("showcluster.html",setdetails = getdetails,frows = clusterrows)
+
+
+Query 5 answer:
+
+HTML:index.html
+<div>
+<h3> Query 5 </h3>
+<div>
+  <p>
+  <form action="/night" method="get">
+    Enter Earthquake magnitude: <input type="text" name="fmag" id="codew31ee25e" />
+  <input type="submit" value="Submit"><br/><br/>
+  </form></p>
+</div><br/><hr>
+</div>
+
+HTML:shownight.html
+{% block content %}
+Number of earthquakes in this cluster<br>
+{{setdetails[0][0]}}
+<br> and there details:
+<table>
+    <tr>
+      <th>Time</th>
+      <th>Latitude</th>
+      <th>Longitude</th>
+      <th>Magnitude</th>
+      <th>ID</th>
+      <th>Place</th>
+    </tr>
+    {% for row in frows %}
+    <tr>
+        {% for column in range(row|length) %}
+            <td>{{ row[column] }}</td>
+        {% endfor %}
+    </tr>
+{% endfor %}
+{% endblock %}
+
+PYTHON:app.py
+#display earthquakes happening at night
+@app.route("/night")
+def displaynight():
+    getmag = str(request.args.get('fmag'))
+    cursor.execute("SELECT ID, MAG, PLACE, TIME, LATITUDE, LONGITUDE FROM all_month WHERE MAG > "+getmag+" AND (DATEADD(day, -DATEDIFF(day, 0, time), time) > '00:10:10.000' and DATEADD(day, -DATEDIFF(day, 0, time), time) < '05:00:00.000');")
+    res1 = cursor.fetchall()
+    cursor.execute("SELECT COUNT(*) FROM all_month WHERE MAG > "+getmag+" AND (DATEADD(day, -DATEDIFF(day, 0, time), time) > '00:10:10.000' and DATEADD(day, -DATEDIFF(day, 0, time), time) < '05:00:00.000');")
+    nmag = cursor.fetchall()
+    return render_template("shownight.html",frows = res1,setdetails = nmag)

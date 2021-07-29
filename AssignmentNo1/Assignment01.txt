@@ -1,0 +1,231 @@
+Name:-Neha Anil Shimpi
+Id:-1001827779
+
+1)Search for Jason (Name) and show his picture on a web page.
+
+HTML:
+
+
+<div>
+    <p>
+    <h2>Query1<h2>
+      <form action="/showpicture" method="get">
+         Enter Name <input type="text" name="fname" id="codew31ee23e" />
+       <input type="submit" value="Submit"><br/><br/>
+     </form>
+     </p>
+  </div>
+
+{% block content %}
+    <h2 align="left"><p>Student ID: 1001827779</p></h2><br/>
+    <h2 align="left"><p>Neha Anil Shimpi</p></h2><br/>
+    <img src="/static/{{name}}" alt="User Image unavailable">
+
+
+Python:
+#display image for given name
+@app.route("/showpicture",methods=['GET','POST'])
+def index():
+    getname = request.args.get('fname')
+    cursor.execute("select Picture from people where Name = '"+getname+"';")
+    getimage = cursor.fetchall()
+    print(getimage)
+    return render_template('picture.html',name=getimage[0][0])
+
+
+2)Search for (display) all pictures where the salary is 
+  less than 99000.
+
+HTML:
+ <h2>Query2<h2>
+        Display all pictures for salary < 99000
+        <h3><a href="/salary">click here</a></h3>
+
+
+
+<h2 align="left"><p>Student ID: 1001827779</p></h2><br/>
+ <h2 align="left"><p>Neha Anil Shimpi</p></h2><br/>
+
+<h2>Pictures for salary < 99000</h2>
+        {% block content %}
+        {% for x in setsalary %}
+            <img src="/static/{{x}}" alt="Image Unavailable" width="250px" height="200px"> 
+        {% endfor %}
+        {% endblock %}
+
+
+
+
+Python:
+
+#display images for salary condition given
+@app.route('/salary')
+def salary_query():
+     select_sql2 = "select Picture from people where Salary < 99000;"
+     cursor.execute(select_sql2)
+     fetched_result = cursor.fetchall()
+     l = []
+     for a in fetched_result:
+        if a[0] != None:
+             l.append(a[0]) 
+             print(l)
+     return render_template('salary.html', setsalary=l)
+
+
+3)Add a picture for Dave
+
+HTML:
+
+<div>
+  <p>
+  <form action="/uploadimg" method="get">
+    add or update image of <input type="text" name="imguser" id="codew31ee25e" />
+  <input type="submit" value="Submit"><br/><br/>
+   {%if imessage %}
+    {{message}}
+  {%endif%}
+  </form>
+  </p>
+  </div><br/><hr>
+
+
+
+
+Python:
+#ADD or update image
+@app.route("/uploadimage", methods=['GET','POST'])
+def uploadimage():
+     getimguser = str(request.args.get('imguser'))
+     cursor.execute("select * from people where Name= '"+getimguser+"';")
+     iedetails = cursor.fetchall()
+     return render_template('uploadimage.html', isetdetails = iedetails[0][6])
+
+
+#Browse and submit the image
+@app.route("/submitimage", methods=['POST'])
+def submitimage():
+     getmyfile = request.files["myfile"] #file path
+     getimagename = getmyfile.filename   #file name
+     getimgguy = request.form["imgguy"]  #inside the submit image page one more time name
+     print(getimgguy)
+     print(getmyfile)
+     print(getimagename)
+    
+     getmyfile.save(os.path.join("D:/Neha_Documents/Study/Summer2021/ADB/static", getimagename))
+     print("Image has been saved to static directory")
+     cursor.execute("UPDATE people SET Picture = '"+getimagename+"' WHERE Name='"+getimgguy+"';")
+     return render_template('index.html', imessage="Image has been updated")
+
+
+
+4)Remove Dave
+
+
+HTML:
+<div>
+        <p>
+          <form action="/deletepicture" method="get">
+             Enter Name of person to delete <input type="text" name="fname" id="codew31ee23e" />
+           <input type="submit" value="Submit"><br/><br/>
+         </form>
+         </p>
+      </div>
+<div>
+    <p>
+    {%if rmessage %}
+    {{rmessage}}
+    {%endif%}
+    </p>
+    </div><br/><hr>
+  
+  </form>
+  </p>
+  </div><br/><hr>
+
+
+
+Python:
+#Remove user
+    @app.route("/deletepicture")
+    def removeuser():
+        getname = request.args.get('fname')
+        cursor.execute("DELETE FROM people WHERE Name='"+getname+"';")
+        conn.commit()
+        return render_template('index1.html', rmessage="Dave has been Removed")
+
+
+5)Change Dhruvi’s keywords to “Not so nice anymore”. And
+6)Change Someone’s salary
+
+HTML:
+
+<div>
+<p>
+<form action="/editgetname" method="get">
+  Edit the deatils of <input type="text" name="egetname" id="codew31ee25e" />
+<input type="submit" value="Submit"><br/><br/>
+{%if message %}
+{{message}}
+{%endif%}
+</form>
+</p>
+</div><br/><hr>
+
+
+  <h2>Query 5 and 6</h2>
+     Enter Fields to be updated along with the person's NAME
+    <div>
+        Enter Details to Edit:
+        <form action="/changesalary" method="GET">
+            Name:<input type="text" name="inputname"  /><br/>
+            <h4 align="left">Enter details(please enter accurate Name):-</h4>
+            State:<input type="text" name="inputstate"/><br/>
+            Salary:<input type="text" name="inputsal"/><br/>
+            Grade:<input type="text" name="inputgrade"/><br/>
+            Room:<input type="text" name="inputroom"/><br/>
+            Telnum:<input type="text" name="inputtelnum"/><br/>
+            Picture:<input type="text" name="inputpicture"/><br/>
+            Keywords:<input type="text" name="inputkwd"/><br/>
+            <input type="submit" value="Submit"><br/>
+        </form>
+    </div>
+
+
+
+
+
+Python:
+
+#Edit details enter the name:
+@app.route("/changesalary")
+def changesalary():
+    getinputname = str(request.args.get('inputname'))
+    cursor.execute("select * from people where Name = '"+getinputname+"';")
+    res = cursor.fetchall()
+    print(res)
+    cntrs=0
+    if(len(res)!=0):
+        getst = str(request.args.get('inputstate'))
+        if(getst==''):
+                getst=str(res[0][1])
+        getsal = str(request.args.get('inputsal'))
+        if(getsal==''):
+            getsal=str(res[0][2])
+        getgrad = str(request.args.get('inputgrade'))
+        if(getgrad==''):
+            getgrad=str(res[0][3])
+        getrm = str(request.args.get('inputroom'))
+        if(getrm==''):
+            getrm=str(res[0][4])
+        gettn= str(request.args.get('inputtelnum'))
+        if(gettn==''):
+            gettn=str(res[0][5])
+        getkeywd= str(request.args.get('inputkwd'))
+        if(getkeywd==''):
+            getkeywd=str(res[0][7])
+        cursor.execute("UPDATE people SET State = '"+getst+"', Salary = "+getsal+",Grade ="+getgrad+",Room ="+getrm+",Telnum = "+gettn+", Keywords = '"+getkeywd+"' WHERE Name='"+getinputname+"';")
+        cursor.commit()
+        cntrs=1
+    return render_template("changesalary.html", counter=cntrs )ed")
+
+
